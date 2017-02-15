@@ -34,7 +34,7 @@ Base = declarative_base()
 class SqlSync:
 
     all_types = ('canonical', 'author', 'refereed', 'simbad', 'grants', 'citation', 'relevance',
-                  'reader', 'download', 'reference', 'reads')
+                  'reader', 'download', 'reference', 'reads', 'doi', 'doidata')
 
     def __init__(self, schema_name, passed_config=None):
         self.schema_name = schema_name
@@ -42,14 +42,14 @@ class SqlSync:
         self.config.update(utils.load_config())
         if passed_config:
             self.config.update(passed_config)
-        
+
         connection_string = self.config.get('INGEST_DATABASE',
                                             'postgresql://postgres@localhost:5432/postgres')
         self.sql_sync_engine = create_engine(connection_string, echo=False)
         self.sql_sync_connection = self.sql_sync_engine.connect()
         self.meta = MetaData()
         self.row_view_table = self.get_row_view_table()
-        
+
         self.logger = logging.getLogger('AdsDataSqlSync')
 
 
@@ -60,7 +60,7 @@ class SqlSync:
             table = self.get_table(t, temp_meta)
         temp_meta.create_all(self.sql_sync_engine)
         self.logger.info('row_view, created database column tables in schema {}'.format(self.schema_name))
-        
+
 
     def rename_schema(self, new_name):
         self.sql_sync_engine.execute("alter schema {} rename to {}".format(self.schema_name, new_name))
@@ -82,7 +82,7 @@ class SqlSync:
         sql_command = SqlSync.create_view_sql.format(self.schema_name)
         sess.execute(sql_command)
         sess.commit()
-        
+
         sql_command = 'create index on {}.RowViewM (bibcode)'.format(self.schema_name)
         sess.execute(sql_command)
         sql_command = 'create index on {}.RowViewM (id)'.format(self.schema_name)
@@ -90,7 +90,7 @@ class SqlSync:
         sess.commit()
         sess.close()
         self.logger.info('row_view, created joined materialized view in schema {}'.format(self.schema_name))
-    
+
     def create_delta_rows(self, baseline_schema):
         self.logger.info('row_view, creating delta/changed table in schema {}'.format(self.schema_name))
         Session = sessionmaker()
@@ -100,15 +100,15 @@ class SqlSync:
         sess.commit()
         sess.close()
         self.logger.info('row_view, created delta/changed table in schema {}'.format(self.schema_name))
-        
-        
+
+
     def get_delta_table(self, meta=None):
         """ delta table holds list of bibcodes that differ between two row views"""
         if meta is None:
             meta = self.meta
         return Table('changedrowsm', meta,
                      Column('bibcode', String, primary_key=True),
-                     schema=self.schema_name) 
+                     schema=self.schema_name)
 
     def log_delta_reasons(self, baseline_schema):
         """log the counts for the changes in each column from baseline """
@@ -119,7 +119,7 @@ class SqlSync:
         m = 'total number of changed bibcodes: {}'.format(r.scalar())
         print m
         self.logger.info(m)
-        
+
         column_names = ('authors', 'refereed', 'simbad_objects', 'grants', 'citations',
                         'boost', 'citation_count', 'read_count', 'norm_cites',
                         'readers', 'downloads', 'reads', 'reference')
@@ -135,7 +135,7 @@ class SqlSync:
             self.logger.info(m)
         sess.commit()
         sess.close()
-        
+
 
     def get_canonical_table(self, meta=None):
         if meta is None:
@@ -143,7 +143,7 @@ class SqlSync:
         return Table('canonical', meta,
                      Column('bibcode', String, primary_key=True),
                      Column('id', Integer),
-                     schema=self.schema_name) 
+                     schema=self.schema_name)
 
     def get_author_table(self, meta=None):
         if meta is None:
@@ -152,7 +152,7 @@ class SqlSync:
                      Column('bibcode', String, primary_key=True),
                      Column('authors', ARRAY(String)),
                      extend_existing=True,
-                     schema=self.schema_name) 
+                     schema=self.schema_name)
 
     def get_refereed_table(self, meta=None):
         if meta is None:
@@ -168,7 +168,7 @@ class SqlSync:
         return Table('simbad', meta,
                      Column('bibcode', String, primary_key=True),
                      Column('simbad_objects', ARRAY(String)),
-                     schema=self.schema_name) 
+                     schema=self.schema_name)
 
     def get_grants_table(self, meta=None):
         if meta is None:
@@ -176,7 +176,7 @@ class SqlSync:
         return Table('grants', meta,
                      Column('bibcode', String, primary_key=True),
                      Column('grants', ARRAY(String)),
-                     schema=self.schema_name) 
+                     schema=self.schema_name)
 
     def get_citation_table(self, meta=None):
         if meta is None:
@@ -184,7 +184,7 @@ class SqlSync:
         return Table('citation', meta,
                      Column('bibcode', String, primary_key=True),
                      Column('citations', ARRAY(String)),
-                     schema=self.schema_name) 
+                     schema=self.schema_name)
 
     def get_relevance_table(self, meta=None):
         if meta is None:
@@ -195,7 +195,7 @@ class SqlSync:
                      Column('citation_count', Integer),
                      Column('read_count', Integer),
                      Column('norm_cites', Integer),
-                     schema=self.schema_name) 
+                     schema=self.schema_name)
 
     def get_reader_table(self, meta=None):
         if meta is None:
@@ -203,7 +203,7 @@ class SqlSync:
         return Table('reader', meta,
                      Column('bibcode', String, primary_key=True),
                      Column('readers', ARRAY(String)),
-                     schema=self.schema_name) 
+                     schema=self.schema_name)
 
     def get_reads_table(self, meta=None):
         if meta is None:
@@ -211,7 +211,7 @@ class SqlSync:
         return Table('reads', meta,
                      Column('bibcode', String, primary_key=True),
                      Column('reads', ARRAY(Integer)),
-                     schema=self.schema_name) 
+                     schema=self.schema_name)
 
     def get_download_table(self, meta=None):
         if meta is None:
@@ -219,7 +219,7 @@ class SqlSync:
         return Table('download', meta,
                      Column('bibcode', String, primary_key=True),
                      Column('downloads', ARRAY(Integer)),
-                     schema=self.schema_name) 
+                     schema=self.schema_name)
 
     def get_reference_table(self, meta=None):
         if meta is None:
@@ -227,8 +227,23 @@ class SqlSync:
         return Table('reference', meta,
                      Column('bibcode', String, primary_key=True),
                      Column('reference', ARRAY(String)),
-                     schema=self.schema_name) 
+                     schema=self.schema_name)
 
+    def get_doi_table(self, meta=None):
+        if meta is None:
+            meta = self.meta
+        return Table('doi', meta,
+                     Column('bibcode', String, primary_key=True),
+                     Column('doi', ARRAY(String)),
+                     schema=self.schema_name)
+
+    def get_doidata_table(self, meta=None):
+        if meta is None:
+            meta = self.meta
+        return Table('doidata', meta,
+                     Column('bibcode', String, primary_key=True),
+                     Column('doidata', postgresql.JSON),
+                     schema=self.schema_name)
 
     def get_row_view_table(self, meta=None):
         if meta is None:
@@ -314,7 +329,7 @@ class SqlSync:
             return False
         return True
 
-        
+
 
     def count_lines(self, file):
         count = 0
@@ -346,7 +361,7 @@ class SqlSync:
        natural left join {0}.Citation                 \
        natural left join {0}.Relevance natural left join {0}.Reader \
        natural left join {0}.Download natural left join {0}.Reads   \
-       natural left join {0}.Reference;' 
+       natural left join {0}.Reference;'
 
     create_changed_sql = \
         'create materialized view {0}.ChangedRowsM as \
@@ -403,6 +418,3 @@ if __name__ == "__main__":
                 if count % 1000000 == 0:
                     print count
         print 'count = ', count
-
-                
-        

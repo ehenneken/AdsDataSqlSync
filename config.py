@@ -2,7 +2,7 @@
 
 #LOG_FILENAME = 'AdsDataSqlSync/logs/flatFileIngest.log'
 
-# possible values: WARN, INFO, DEBUG                                                                    
+# possible values: WARN, INFO, DEBUG
 LOGGING_LEVEL = 'DEBUG'
 
 #DATA_PATH = '/SpacemanSteve/tmp/columnFiles3/'
@@ -31,6 +31,8 @@ CITATION = 'citation/all.links'
 READER = 'alsoread_bib/all.links'
 REFEREED = 'refereed/all.links'
 CANONICAL = 'bibcodes.list.can'
+DOI = 'DOI/all.links'
+DOIDATA = 'DOI/refdois.dat'
 
 # number of rows of column file to process
 # set to a small number during testing to ingest just a little data quickly
